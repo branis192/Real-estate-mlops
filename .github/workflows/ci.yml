@@ -14,6 +14,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Debug project structure
+        run: |
+          pwd
+          echo "=== Files ==="
+          find . -maxdepth 3 -type f | sort
+          echo "=== Directories ==="
+          find . -maxdepth 2 -type d | sort
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -27,6 +35,6 @@ jobs:
 
       - name: Run unit tests
         env:
-          PYTHONPATH: .
+          PYTHONPATH: ${{ github.workspace }}
         run: |
           python -m pytest tests/

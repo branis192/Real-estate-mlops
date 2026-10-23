@@ -1,32 +1,28 @@
 import os
-from typing import Dict, Any
+from typing import Any, Dict
 import joblib
 import numpy as np
 import pandas as pd
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-# 1. Initialize FastAPI app
 app = FastAPI(
     title="Ames Real Estate Price Prediction API",
     description="MLOps API serving a Linear Regression model to predict house prices.",
-    version="1.0.0"
+    version="1.0.0",
 )
 
-# 2. Define the path to our trained pipeline artifact
-MODEL_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "models", "model_pipeline.joblib")
+MODEL_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(__file__)), "models", "model_pipeline.joblib"
+)
 
-# Load the pipeline once when the server starts
 if os.path.exists(MODEL_PATH):
     model_pipeline = joblib.load(MODEL_PATH)
-    print("🎯 ML pipeline loaded successfully in FastAPI!")
 else:
-    raise FileNotFoundError(f"Pipeline artifact not found at {MODEL_PATH}. Please run src/train.py first.")
+    raise FileNotFoundError(f"Pipeline artifact not found at {MODEL_PATH}.")
 
 
-# 3. Define the input data schema using Pydantic
 class HouseFeatures(BaseModel):
-    # We accept a dynamic dictionary of features matching the AmesHousing columns
     features: Dict[str, Any]
 
     class Config:
@@ -37,36 +33,37 @@ class HouseFeatures(BaseModel):
                     "Overall Qual": 7,
                     "Garage Area": 400,
                     "Neighborhood": "NAmes",
-                    "Full Bath": 2
-                    # The pipeline will safely handle any missing columns!
+                    "Full Bath": 2,
                 }
             }
         }
 
 
-# 4. Create the health check endpoint
 @app.get("/")
 def home():
     return {"status": "healthy", "model_loaded": model_pipeline is not None}
 
 
-# 5. Create the prediction endpoint
 @app.post("/predict")
 def predict_price(payload: HouseFeatures):
     try:
-        # Convert the incoming JSON features into a Pandas DataFrame (1 row)
         input_df = pd.DataFrame([payload.features])
-        
-        # Ensure all columns expected by the model exist (fill missing ones with NaN)
-        # Our pipeline's SimpleImputer will automatically handle these NaNs!
+
+        # Récupère la liste de toutes les colonnes vues à l'entraînement
+        expected_cols = model_pipeline.named_steps["preprocessor"].feature_names_in_
+
+        # Ajoute les colonnes manquantes remplies de NaN (gérées par les Imputers)
+        for col in expected_cols:
+            if col not in input_df.columns:
+                input_df[col] = np.nan
+
+        # Réaligne les colonnes dans l'ordre attendu
+        input_df = input_df[expected_cols]
+
         prediction_log = model_pipeline.predict(input_df)
-        
-        # Inverse the log transformation to get the price in actual USD ($)
         prediction_dollars = np.expm1(prediction_log)[0]
-        
-        return {
-            "predicted_price_usd": round(float(prediction_dollars), 2)
-        }
-        
+
+        return {"predicted_price_usd": round(float(prediction_dollars), 2)}
+
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Prediction error: {str(e)}")

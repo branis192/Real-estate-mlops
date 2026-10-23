@@ -33,6 +33,15 @@ jobs:
           python -m pip install -r requirements.txt
           python -m pip install pytest httpx
 
+      - name: Debug Python imports
+        run: |
+          pwd
+          ls -la
+          ls -la app
+          echo "PYTHONPATH=$PYTHONPATH"
+          python -c "import sys; print(sys.path)"
+          python -c "import app.main; print('Import successful')"
+
       - name: Run unit tests
         env:
           PYTHONPATH: ${{ github.workspace }}

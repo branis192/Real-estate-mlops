@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: real-estate-api-deployment
+  labels:
+    app: real-estate-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: real-estate-api
+  template:
+    metadata:
+      labels:
+        app: real-estate-api
+    spec:
+      containers:
+      - name: api
+        image: real-estate-api:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8000
+        resources:
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 15
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 10

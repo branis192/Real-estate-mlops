@@ -5,12 +5,17 @@ import numpy as np
 import pandas as pd
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+# 1. En haut du fichier avec les imports :
+from prometheus_fastapi_instrumentator import Instrumentator
+
 
 app = FastAPI(
     title="Ames Real Estate Price Prediction API",
     description="MLOps API serving a Linear Regression model to predict house prices.",
     version="1.0.0",
 )
+# 2. Juste après la ligne app = FastAPI(...) :
+Instrumentator().instrument(app).expose(app)
 
 MODEL_PATH = os.path.join(
     os.path.dirname(os.path.dirname(__file__)), "models", "model_pipeline.joblib"
